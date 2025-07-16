@@ -22,15 +22,15 @@ class TestGithubOrgClient(unittest.TestCase):
     """Unit tests for GithubOrgClient methods."""
 
     @parameterized.expand([
-        ("google", {"login": "google", "repos_url": "url"}),
-        ("abc",    {"login": "abc",    "repos_url": "url2"})
+        ("google", {"login": "google", "repos_url": "https://api.github.com/orgs/google/repos"}),
+        ("abc",    {"login": "abc",    "repos_url": "https://api.github.com/orgs/abc/repos"})
     ])
-    @patch("client.get_json")
+    @patch("utils.get_json")
     def test_org(self, org_name, payload, mock_get_json):
         """org() calls get_json with correct URL and returns its data."""
         mock_get_json.return_value = payload
         client = GithubOrgClient(org_name)
-        result = client.org()
+        result = client.org
         mock_get_json.assert_called_once_with(
             GithubOrgClient.ORG_URL.format(org=org_name)
         )
@@ -40,11 +40,11 @@ class TestGithubOrgClient(unittest.TestCase):
         """_public_repos_url returns the repos_url from org payload."""
         client = GithubOrgClient(self.org_payload["login"])
         self.assertEqual(
-            client._public_repos_url(),
+            client._public_repos_url,
             self.org_payload["repos_url"]
         )
 
-    @patch("client.get_json")
+    @patch("utils.get_json")
     def test_public_repos(self, mock_get_json):
         """public_repos returns a list of repository names."""
         mock_get_json.return_value = self.repos_payload
@@ -58,7 +58,7 @@ class TestGithubOrgClient(unittest.TestCase):
     def test_public_repos_with_license(self):
         """public_repos(license) filters repos by license key."""
         client = GithubOrgClient(self.org_payload["login"])
-        with patch("client.get_json", return_value=self.repos_payload):
+        with patch("utils.get_json", return_value=self.repos_payload):
             filtered = client.public_repos("apache-2.0")
         self.assertListEqual(filtered, self.apache2_repos)
 
@@ -92,7 +92,7 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
             return response
 
         cls.get_patcher = patch(
-            "client.requests.get",
+            "utils.requests.get",
             side_effect=fake_get
         )
         cls.get_patcher.start()
