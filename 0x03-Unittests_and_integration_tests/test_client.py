@@ -10,17 +10,21 @@ from client import GithubOrgClient
     ("org_payload", "repos_payload", "expected_repos", "apache2_repos"),
     [
         (
-            # simulate JSON from the GitHub /org endpoint
-            {"login": "google",
-             "repos_url": "https://api.github.com/orgs/google/repos"},
-            # simulate JSON list from repos_url
-            [{"name": "repo1", "license": {"key": "apache-2.0"}},
-             {"name": "repo2", "license": {"key": "bsd-3-clause"}}],
-            # all repo names
+            # Simulated JSON from GitHub /org endpoint
+            {
+                "login": "google",
+                "repos_url": "https://api.github.com/orgs/google/repos"
+            },
+            # Simulated JSON list returned by that repos_url
+            [
+                {"name": "repo1", "license": {"key": "apache-2.0"}},
+                {"name": "repo2", "license": {"key": "bsd-3-clause"}}
+            ],
+            # All repo names
             ["repo1", "repo2"],
-            # only those matching apache-2.0
-            ["repo1"],
-        ),
+            # Only those matching apache-2.0
+            ["repo1"]
+        )
     ]
 )
 class TestGithubOrgClient(unittest.TestCase):
@@ -34,16 +38,16 @@ class TestGithubOrgClient(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Stop the global patch of requests.get."""
+        """Stop patching requests.get."""
         cls.get_patcher.stop()
 
     @parameterized.expand([
         ("google", {"login": "google", "repos_url": "url"}),
-        ("abc",    {"login": "abc",    "repos_url": "url2"}),
+        ("abc",    {"login": "abc",    "repos_url": "url2"})
     ])
     @patch("client.get_json")
     def test_org(self, org_name, payload, mock_get_json):
-        """org() calls get_json with the correct URL and returns its data."""
+        """org() calls get_json with correct URL and returns its data."""
         mock_get_json.return_value = payload
         client = GithubOrgClient(org_name)
         result = client.org()
@@ -53,7 +57,7 @@ class TestGithubOrgClient(unittest.TestCase):
         self.assertEqual(result, payload)
 
     def test_public_repos_url(self):
-        """_public_repos_url() returns the repos_url from the org payload."""
+        """_public_repos_url returns the repos_url from the org payload."""
         client = GithubOrgClient(self.org_payload["login"])
         self.assertEqual(
             client._public_repos_url(),
@@ -78,11 +82,12 @@ class TestGithubOrgClient(unittest.TestCase):
 
     @parameterized.expand([
         ({"license": {"key": "apache-2.0"}}, "apache-2.0", True),
-        ({"license": {"key": "bsd-3-clause"}}, "apache-2.0", False),
+        ({"license": {"key": "bsd-3-clause"}}, "apache-2.0", False)
     ])
     def test_has_license(self, repo, key, expected):
-        """has_license() returns True only when the repo’s license matches."""
-        self.assertEqual(GithubOrgClient.has_license(repo, key), expected)
+        """has_license() returns True only when license key matches."""
+        result = GithubOrgClient.has_license(repo, key)
+        self.assertEqual(result, expected)
 
 
 if __name__ == "__main__":
