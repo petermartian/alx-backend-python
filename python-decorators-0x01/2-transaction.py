@@ -32,4 +32,4 @@ if __name__ == "__main__":
         new_id = add_user(username="jdoe", email="jdoe@example.com")
         print(f"Inserted user with ID {new_id}")
     except:
-        print("Insert failed.")
+        print("Insert failed.") 
