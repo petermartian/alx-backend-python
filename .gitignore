@@ -1,19 +1,22 @@
-# Python bytecode
+# ─── Ignore everything by default ─────────────────────
+*
+
+# ─── But don’t ignore these ───────────────────────────
+!.gitignore
+!messaging_app/
+!messaging_app/**
+
+# ─── Then ignore common Python/Django cruft ──────────
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 
-# Virtual environment
 venv/
-
-# SQLite database
 db.sqlite3
 
-# Django media and logs
 media/
 *.log
 
-# IDE settings
 .vscode/
 .idea/
