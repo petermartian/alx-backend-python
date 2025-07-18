@@ -1,12 +1,11 @@
-# ─── Ignore everything by default ─────────────────────
-*
+# ─── Ignore everything at the root ──────────────────
+/*
+# ─── But don’t ignore these ─────────────────────────
+!/.gitignore
+!/messaging_app/
+!/messaging_app/**
 
-# ─── But don’t ignore these ───────────────────────────
-!.gitignore
-!messaging_app/
-!messaging_app/**
-
-# ─── Then ignore common Python/Django cruft ──────────
+# ─── Then ignore common Python/Django cruft anywhere ─
 __pycache__/
 *.py[cod]
 *.pyo
