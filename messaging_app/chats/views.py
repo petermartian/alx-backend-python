@@ -1,5 +1,7 @@
-from rest_framework import viewsets
+
+from rest_framework import viewsets, status, filters
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 
@@ -10,15 +12,21 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['conversation_name']
+    ordering_fields = ['created_at']
 
     def get_queryset(self):
-        # restrict to conversations the user participates in
         return Conversation.objects.filter(participants=self.request.user)
 
-    def perform_create(self, serializer):
-        # Save the conversation and ensure the creator is a participant
+    def create(self, request, *args, **kwargs):
+        # Override to return explicit status
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         convo = serializer.save()
         convo.participants.add(self.request.user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -27,15 +35,20 @@ class MessageViewSet(viewsets.ModelViewSet):
     """
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['message_body']
+    ordering_fields = ['sent_at']
 
     def get_queryset(self):
-        # Optionally filter by conversation via ?conversation=<id>
         qs = Message.objects.filter(conversation__participants=self.request.user)
         convo_id = self.request.query_params.get('conversation')
         if convo_id:
             qs = qs.filter(conversation_id=convo_id)
         return qs
 
-    def perform_create(self, serializer):
-        # Always set the sender to the logged-in user
-        serializer.save(sender=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        msg = serializer.save(sender=request.user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
