@@ -45,12 +45,6 @@ def conversation_view(request):
     })
 
 
-@login_required
-def unread_messages_view(request):
-    unread_msgs = Message.unread.for_user(request.user)
-    return render(request, 'messaging/unread.html', {'messages': unread_msgs})
-
-
 def get_all_replies(message):
     replies = []
 
@@ -62,4 +56,18 @@ def get_all_replies(message):
 
     recurse(message)
     return replies
+
+
+@login_required
+def unread_messages_view(request):
+    unread_msgs = Message.unread.for_user(request.user)
+    return render(request, 'messaging/unread.html', {'messages': unread_msgs})
+
+@login_required
+def unread_messages_view(request):
+    unread_msgs = Message.unread.unread_for_user(request.user)
+    return render(request, 'messaging/unread.html', {'messages': unread_msgs})
+
+
+
 
