@@ -4,6 +4,9 @@
 !/.gitignore
 !/messaging_app/
 !/messaging_app/**
+!/Django-signals_orm-0x04/
+!/Django-signals_orm-0x04/**
+
 
 # ─── Then ignore common Python/Django cruft anywhere ─
 __pycache__/
