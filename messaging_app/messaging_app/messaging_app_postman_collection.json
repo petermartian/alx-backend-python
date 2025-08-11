@@ -1,0 +1,184 @@
+# This script generates a Postman collection for a messaging app API with JWT authentication.
+# It includes endpoints for authentication, conversations, and messages with pagination and filtering.
+# The collection is saved as a JSON file.
+# The output file path is specified at the end of the script.
+import json, uuid, os, textwrap
+
+collection = {
+    "info": {
+        "name": "Messaging API (JWT)",
+        "_postman_id": str(uuid.uuid4()),
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": "Postman collection for testing Messaging API with JWT auth, conversations, messages, pagination & filters."
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {"key": "token", "value": "{{access_token}}", "type": "string"}
+        ]
+    },
+    "variable": [
+        {"key": "baseUrl", "value": "http://localhost:8000"},
+        {"key": "username", "value": "petmartian"},
+        {"key": "password", "value": "2309"},
+        {"key": "access_token", "value": ""},
+        {"key": "refresh_token", "value": ""},
+        {"key": "conversation_id", "value": "1"}
+    ],
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Get Token (access + refresh)",
+                    "request": {
+                        "method": "POST",
+                        "header": [{"key": "Content-Type", "value": "application/json"}],
+                        "body": {
+                            "mode": "raw",
+                            "raw": json.dumps({"username": "{{username}}", "password": "{{password}}"})
+                        },
+                        "url": {"raw": "{{baseUrl}}/api/token/", "host": ["{{baseUrl}}"], "path": ["api", "token", ""]}
+                    },
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "exec": [
+                                "var data = pm.response.json();",
+                                "if (data.access) pm.collectionVariables.set('access_token', data.access);",
+                                "if (data.refresh) pm.collectionVariables.set('refresh_token', data.refresh);",
+                                "pm.test('Got access token', function () { pm.expect(data).to.have.property('access'); });"
+                            ]
+                        }
+                    }]
+                },
+                {
+                    "name": "Refresh Access Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [{"key": "Content-Type", "value": "application/json"}],
+                        "body": {
+                            "mode": "raw",
+                            "raw": json.dumps({"refresh": "{{refresh_token}}"})
+                        },
+                        "url": {"raw": "{{baseUrl}}/api/token/refresh/", "host": ["{{baseUrl}}"], "path": ["api", "token", "refresh", ""]}
+                    },
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "exec": [
+                                "var data = pm.response.json();",
+                                "if (data.access) pm.collectionVariables.set('access_token', data.access);",
+                                "pm.test('Refreshed access token', function () { pm.expect(data).to.have.property('access'); });"
+                            ]
+                        }
+                    }]
+                },
+                {
+                    "name": "Protected Ping",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "GET",
+                        "header": [],
+                        "url": {"raw": "{{baseUrl}}/protected/", "host": ["{{baseUrl}}"], "path": ["protected", ""]}
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Conversations",
+            "item": [
+                {
+                    "name": "Create Conversation",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "POST",
+                        "header": [{"key": "Content-Type", "value": "application/json"}],
+                        "body": {"mode": "raw", "raw": json.dumps({"title": "My first convo"})},
+                        "url": {"raw": "{{baseUrl}}/api/conversations/", "host": ["{{baseUrl}}"], "path": ["api", "conversations", ""]}
+                    },
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "exec": [
+                                "var data = pm.response.json();",
+                                "if (data.id) pm.collectionVariables.set('conversation_id', data.id);",
+                                "pm.test('Created conversation', function () { pm.expect(data).to.have.property('id'); });"
+                            ]
+                        }
+                    }]
+                },
+                {
+                    "name": "List My Conversations (search & order)",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "GET",
+                        "url": {"raw": "{{baseUrl}}/api/conversations/?search=&ordering=-updated_at", "host": ["{{baseUrl}}"], "path": ["api", "conversations", ""], "query": [{"key":"search","value":""},{"key":"ordering","value":"-updated_at"}]}
+                    }
+                },
+                {
+                    "name": "Add Participant",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "POST",
+                        "header": [{"key": "Content-Type", "value": "application/json"}],
+                        "body": {"mode": "raw", "raw": json.dumps({"user_id": 2})},
+                        "url": {"raw": "{{baseUrl}}/api/conversations/{{conversation_id}}/add_participant/", "host": ["{{baseUrl}}"], "path": ["api", "conversations", "{{conversation_id}}", "add_participant", ""]}
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Messages",
+            "item": [
+                {
+                    "name": "Send Message",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "POST",
+                        "header": [{"key": "Content-Type", "value": "application/json"}],
+                        "body": {"mode": "raw", "raw": json.dumps({"conversation": "{{conversation_id}}", "content": "Hello from Postman!"})},
+                        "url": {"raw": "{{baseUrl}}/api/messages/", "host": ["{{baseUrl}}"], "path": ["api", "messages", ""]}
+                    }
+                },
+                {
+                    "name": "List Messages (paginated 20 per page)",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/messages/?conversation={{conversation_id}}&page=1",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api","messages",""],
+                            "query": [{"key":"conversation","value":"{{conversation_id}}"},{"key":"page","value":"1"}]
+                        }
+                    }
+                },
+                {
+                    "name": "Filter Messages (time range & participant)",
+                    "request": {
+                        "auth": {"type": "inherit"},
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/messages/?created_at_after=2025-08-10T00:00:00Z&created_at_before=2025-08-12T00:00:00Z&participant=1&ordering=-created_at",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api","messages",""],
+                            "query": [
+                                {"key":"created_at_after","value":"2025-08-10T00:00:00Z"},
+                                {"key":"created_at_before","value":"2025-08-12T00:00:00Z"},
+                                {"key":"participant","value":"1"},
+                                {"key":"ordering","value":"-created_at"}
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
+
+out_path = "/mnt/data/messaging_app_postman_collection.json"
+with open(out_path, "w") as f:
+    json.dump(collection, f, indent=2)
+
+out_path
