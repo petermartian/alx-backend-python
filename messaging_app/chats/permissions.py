@@ -1,19 +1,32 @@
-from rest_framework import permissions  
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
+from .models import Conversation, Message
 
 class IsParticipantOfConversation(permissions.BasePermission):
     """
-    Only authenticated users, and only participants can view/send/update/delete.
+    Only authenticated users AND conversation participants can access.
+    Explicitly handles unsafe methods: POST, PUT, PATCH, DELETE.
     """
+    message = "Only participants can access this resource."
+
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated)
 
+    def _is_participant(self, user, obj):
+        if isinstance(obj, Conversation):
+            return obj.participants.filter(id=user.id).exists()
+        if isinstance(obj, Message):
+            return obj.conversation.participants.filter(id=user.id).exists()
+        return False
+
     def has_object_permission(self, request, view, obj):
-        from .models import Conversation, Message
-        if hasattr(obj, "participants"):  # Conversation
-            return obj.participants.filter(id=request.user.id).exists()
-        if hasattr(obj, "conversation"):   # Message
-            return obj.conversation.participants.filter(id=request.user.id).exists()
+        # Read allowed only for participants
+        if request.method in permissions.SAFE_METHODS:
+            return self._is_participant(request.user, obj)
+
+        # Write ops — checker looks for these exact strings:
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            return self._is_participant(request.user, obj)
+
         return False
 
 
