@@ -1,4 +1,22 @@
+from rest_framework import permissions  
 from rest_framework.permissions import BasePermission
+
+class IsParticipantOfConversation(permissions.BasePermission):
+    """
+    Only authenticated users, and only participants can view/send/update/delete.
+    """
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        from .models import Conversation, Message
+        if hasattr(obj, "participants"):  # Conversation
+            return obj.participants.filter(id=request.user.id).exists()
+        if hasattr(obj, "conversation"):   # Message
+            return obj.conversation.participants.filter(id=request.user.id).exists()
+        return False
+
+
 
 class IsParticipantOfConversation(BasePermission):
     """
