@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NS="default"
+BLUE_DEP="messaging-app-blue"
+GREEN_DEP="messaging-app-green"
+SVC="messaging-app"
+
+echo "🚀 Applying blue/green deployments and service..."
+kubectl apply -f messaging_app/blue_deployment.yaml
+kubectl apply -f messaging_app/green_deployment.yaml
+kubectl apply -f messaging_app/kubeservice.yaml
+
+echo "⏳ Waiting for rollouts..."
+kubectl rollout status deploy/${GREEN_DEP} -n ${NS} --timeout=180s || true
+kubectl rollout status deploy/${BLUE_DEP}  -n ${NS} --timeout=180s || true
+
+echo "📦 Pods:"
+kubectl get pods -l app=messaging-app -n ${NS} -o wide --show-labels
+
+echo "🧪 GREEN logs (last 80 lines):"
+for p in $(kubectl get pods -l app=messaging-app,version=green -n ${NS} -o name); do
+  echo "----- $p -----"
+  kubectl logs "$p" -n ${NS} --tail=80 || true
+done
+
+echo "✅ Tip: shift traffic by scaling replicas:"
+echo "   kubectl scale deploy/${GREEN_DEP} --replicas=3"
+echo "   kubectl scale deploy/${BLUE_DEP}  --replicas=0"
