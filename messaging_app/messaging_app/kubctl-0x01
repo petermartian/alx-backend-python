@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# kubctl-0x01: scale Django app to 3 replicas, verify, load test with wrk,
+# and monitor resource usage via kubectl top.
+
+set -euo pipefail
+
+DEPLOY_NAME="messaging-app"
+SERVICE_NAME="messaging-app"
+NAMESPACE="default"
+PORT=8000
+FWD_ADDR="127.0.0.1:${PORT}"
+
+echo "🔎 Checking required commands..."
+need_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "❌ Missing $1."
+    return 1
+  fi
+}
+NEED_WRK=false
+need_cmd kubectl || { echo "Install kubectl first (brew install kubectl)."; exit 1; }
+if ! command -v wrk >/dev/null 2>&1; then
+  NEED_WRK=true
+fi
+
+# Optional: enable metrics so 'kubectl top' works in minikube
+if command -v minikube >/dev/null 2>&1; then
+  echo "🧩 Ensuring metrics-server is enabled in minikube..."
+  minikube addons enable metrics-server >/dev/null 2>&1 || true
+else
+  echo "ℹ️ Not using minikube or minikube not found; 'kubectl top' may require metrics-server installed in your cluster."
+fi
+
+echo "🚀 Scaling Deployment '${DEPLOY_NAME}' to 3 replicas..."
+kubectl scale deployment/${DEPLOY_NAME} --replicas=3 -n "${NAMESPACE}"
+
+echo "⏳ Waiting for rollout to finish..."
+kubectl rollout status deploy/${DEPLOY_NAME} -n "${NAMESPACE}" --timeout=120s
+
+echo "📦 Pods after scaling:"
+kubectl get pods -l app=${DEPLOY_NAME} -n "${NAMESPACE}" -o wide
+
+# Port-forward Service to localhost so wrk can hit it
+echo "🔌 Port-forwarding Service '${SERVICE_NAME}' to http://${FWD_ADDR} ..."
+kubectl port-forward svc/${SERVICE_NAME} -n "${NAMESPACE}" ${PORT}:${PORT} >/tmp/kube_pf.log 2>&1 &
+PF_PID=$!
+cleanup() {
+  echo "🧹 Stopping port-forward (pid ${PF_PID})..."
+  kill ${PF_PID} >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+# Wait a moment for port-forward to bind
+sleep 2
+
+if [ "${NEED_WRK}" = true ]; then
+  echo "⚠️ 'wrk' not found. Install with: brew install wrk"
+  echo "   Skipping load test. Continuing to resource monitoring..."
+else
+  echo "🧪 Running load test with wrk (2 threads, 10 connections, 15s)..."
+  # Adjust URL path if your app home is different
+  wrk -t2 -c10 -d15s http://${FWD_ADDR}/ || true
+fi
+
+# Try to fetch resource usage; metrics may take a bit to appear
+echo "📈 Resource usage (kubectl top) — will retry a few times if empty..."
+for i in {1..5}; do
+  if kubectl top pods -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo "🔹 Top pods:"
+    kubectl top pods -n "${NAMESPACE}"
+    echo "🔹 Top nodes:"
+    kubectl top nodes || true
+    break
+  else
+    echo "  (metrics not ready yet; retry $i/5 in 5s...)"
+    sleep 5
+  fi
+done
+
+echo "✅ Done."
+
