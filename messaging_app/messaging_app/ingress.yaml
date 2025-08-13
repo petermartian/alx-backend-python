@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: messaging-app
+  annotations:
+    # Optional: keep client IP in Django logs
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: messaging.local
+      http:
+        paths:
+          # Django root (e.g., homepage, admin if routed)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: messaging-app
+                port:
+                  number: 8000
+          # Example: route /api/ to same service (adjust if you split services later)
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: messaging-app
+                port:
+                  number: 8000
+

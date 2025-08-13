@@ -1,3 +1,6 @@
+# deployment.yaml
+
+# Messaging App Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,37 +17,72 @@ spec:
       labels:
         app: messaging-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
         - name: web
-          # Uses the image you built locally and loaded into minikube
           image: messaging-app:local
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
-            # If you use custom settings, uncomment and adjust:
-            # - name: DJANGO_SETTINGS_MODULE
-            #   value: "messaging_app.settings"
-          # Run migrations, then start the dev server
+            - name: DJANGO_SETTINGS_MODULE
+              value: "messaging_app.settings"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: username
+            - name: MYSQL_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: database
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: password
+            - name: MYSQL_HOST
+              value: "mysql-service"
+            - name: MYSQL_PORT
+              value: "3306"
           command: ["/bin/bash", "-lc"]
           args:
             - |
-              python manage.py migrate && \
-              python manage.py runserver 0.0.0.0:8000
+              python manage.py migrate --noinput && \
+              gunicorn --bind 0.0.0.0:8000 messaging_app.wsgi:application
           readinessProbe:
             httpGet:
-              path: /
+              path: /health/
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health/
               port: 8000
             initialDelaySeconds: 20
             periodSeconds: 15
+            failureThreshold: 3
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
@@ -57,6 +95,71 @@ spec:
   selector:
     app: messaging-app
   ports:
-    - name: http
+    - name: http-web
       port: 8000
       targetPort: 8000
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: root-password
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: database
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: password
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  labels:
+    app: mysql
+spec:
+  type: ClusterIP
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
