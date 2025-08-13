@@ -1,5 +1,5 @@
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination # type: ignore
+from rest_framework.response import Response # type: ignore
 
 class MessagesPagination(PageNumberPagination):
     page_size = 20
