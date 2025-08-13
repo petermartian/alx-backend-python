@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# kubctl-0x02: Blue/Green apply + sanity checks for the GREEN version.
+
+set -euo pipefail
+
+NS="default"
+BLUE_DEP="messaging-app-blue"
+GREEN_DEP="messaging-app-green"
+SVC="messaging-app"
+
+echo "🔎 Checking kubectl..."
+command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl not found"; exit 1; }
+
+echo "🚀 Applying blue, green, and service manifests..."
+kubectl apply -f messaging_app/blue_deployment.yaml
+kubectl apply -f messaging_app/green_deployment.yaml
+kubectl apply -f messaging_app/kubeservice.yaml
+
+echo "⏳ Waiting for rollouts..."
+kubectl rollout status deploy/${BLUE_DEP}  -n ${NS} --timeout=180s || true
+kubectl rollout status deploy/${GREEN_DEP} -n ${NS} --timeout=180s
+
+echo "📦 Pods by version:"
+kubectl get pods -l app=messaging-app -n ${NS} -o wide --show-labels
+
+echo "🧪 Checking GREEN logs (last 80 lines each pod)..."
+for p in $(kubectl get pods -l app=messaging-app,version=green -n ${NS} -o name); do
+  echo "----- Logs: ${p} -----"
+  kubectl logs "$p" -n ${NS} --tail=80 || true
+done
+
+echo "✅ Done. TIP: Gradually shift traffic by scaling:"
+echo "   kubectl scale deploy/${GREEN_DEP} --replicas=3"
+echo "   kubectl scale deploy/${BLUE_DEP}  --replicas=0"
