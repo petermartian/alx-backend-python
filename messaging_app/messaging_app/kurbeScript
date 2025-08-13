@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# kurbeScript: start a local Kubernetes (minikube) cluster,
+# verify it, and list pods.
+
+set -euo pipefail
+
+# --- sanity checks ---
+if ! command -v minikube >/dev/null 2>&1; then
+  echo "❌ minikube is not installed. Install it with: brew install minikube"
+  exit 1
+fi
+
+if ! command -v kubectl >/dev/null 2>&1; then
+  echo "❌ kubectl is not installed. Install it with: brew install kubectl"
+  exit 1
+fi
+
+# Choose driver (default: docker). You can run: ./kurbeScript hyperkit (etc.)
+DRIVER="${1:-docker}"
+
+echo "🚀 Starting (or verifying) minikube with driver: $DRIVER ..."
+if minikube status >/dev/null 2>&1; then
+  # If it exists but not running, start; if running, skip
+  if ! minikube status --format='{{.Host}}' 2>/dev/null | grep -qi "Running"; then
+    minikube start --driver="$DRIVER"
+  else
+    echo "✅ minikube already running."
+  fi
+else
+  minikube start --driver="$DRIVER"
+fi
+
+# Make sure kubectl talks to minikube
+kubectl config use-context minikube >/dev/null
+
+echo "ℹ️  Kubernetes cluster info:"
+kubectl cluster-info
+
+echo "📦 Pods across all namespaces:"
+kubectl get pods --all-namespaces || true
+
+echo "🎉 Done."
