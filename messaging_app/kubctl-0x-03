@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# kubctl-0x03: rolling update blue deployment to image v2.0 and probe for downtime.
+
+set -euo pipefail
+
+NS="default"
+DEPLOY="messaging-app-blue"
+SVC="messaging-app"
+PORT=8000
+ADDR="127.0.0.1:${PORT}"
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ Missing $1"; exit 1; }; }
+need kubectl
+need curl
+
+echo "🔌 Port-forwarding Service '${SVC}' → http://${ADDR} ..."
+kubectl port-forward svc/${SVC} -n ${NS} ${PORT}:${PORT} >/tmp/kube_pf.log 2>&1 &
+PF_PID=$!
+
+cleanup() {
+  echo -e "\n🧹 Cleaning up..."
+  kill ${PF_PID}  >/dev/null 2>&1 || true
+  kill ${PROBE_PID:-0} >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+sleep 2
+
+FAILS=0
+TOTAL=0
+echo "🧪 Probing / during rollout (2xx/3xx = OK)…"
+(
+  while true; do
+    CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${ADDR}/" || echo "000")
+    TOTAL=$((TOTAL+1))
+    case "$CODE" in
+      2*|3*) printf "." ;;
+      *)     printf "x"; FAILS=$((FAILS+1)) ;;
+    esac
+    sleep 0.5
+  done
+) &
+PROBE_PID=$!
+
+echo "🚀 Applying updated deployment (image v2.0)…"
+kubectl apply -f messaging_app/blue_deployment.yaml
+
+echo "⏳ Monitoring rollout…"
+if kubectl rollout status deploy/${DEPLOY} -n ${NS} --timeout=300s; then
+  echo -e "\n✅ Rollout complete."
+else
+  echo -e "\n⚠️ Rollout not complete. Showing deploy events:"
+  kubectl describe deploy ${DEPLOY} -n ${NS} | sed -n '/Events:/,$p' || true
+fi
+
+kill ${PROBE_PID} >/dev/null 2>&1 || true
+echo -e "\n📊 Probe summary: total=${TOTAL}, failures=${FAILS}"
+
+echo "📦 Current pods:"
+kubectl get pods -l app=messaging-app -n ${NS} -o wide --show-labels
