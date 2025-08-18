@@ -1,32 +1,30 @@
-name: Docker Build & Push
+name: Docker Image
+
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
-
-env:
-  IMAGE_NAME: petermartian/messaging-app
+    branches: [main]
+    paths:
+      - 'messaging_app/**'
+      - '.github/workflows/dep.yml'
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=sha
-      - uses: docker/build-push-action@v6
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
           context: ./messaging_app
-          file: ./messaging_app/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: petmartian/messaging-app:latest
