@@ -1,0 +1,109 @@
+pipeline {
+  agent any
+
+  environment {
+    DOCKER_IMAGE = "petmartian/messaging-app"
+    DJANGO_SETTINGS_MODULE = "messaging_app.settings"
+    PYTHON = "python3"
+  }
+
+  options {
+    timestamps()
+    ansiColor('xterm')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout([$class: 'GitSCM',
+          branches: [[name: '*/main']],
+          userRemoteConfigs: [[
+            url: 'https://github.com/petermartian/alx-backend-python.git',
+            credentialsId: 'github-creds'
+          ]]
+        ])
+        dir('messaging_app') { sh 'ls -la' }
+      }
+    }
+
+    stage('Set up venv & Install deps') {
+      steps {
+        dir('messaging_app') {
+          sh '''
+            ${PYTHON} -m venv .venv
+            . .venv/bin/activate
+            pip install --upgrade pip
+            if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+            # testing tools
+            pip install pytest pytest-cov flake8 coverage
+          '''
+        }
+      }
+    }
+
+    stage('Lint') {
+      steps {
+        dir('messaging_app') {
+          sh '''
+            . .venv/bin/activate
+            flake8 .
+          '''
+        }
+      }
+    }
+
+    stage('Test') {
+      steps {
+        dir('messaging_app') {
+          sh '''
+            mkdir -p reports
+            . .venv/bin/activate
+            pytest --maxfail=1 -q --disable-warnings --junitxml=reports/junit.xml --cov=. --cov-report=xml:reports/coverage.xml
+          '''
+        }
+      }
+      post {
+        always {
+          junit 'messaging_app/reports/junit.xml'
+          publishHTML(target: [
+            allowMissing: true,
+            keepAll: true,
+            reportDir: 'messaging_app/reports',
+            reportFiles: 'coverage.xml',
+            reportName: 'Coverage XML'
+          ])
+        }
+      }
+    }
+
+    stage('Build Docker image') {
+      steps {
+        dir('messaging_app') {
+          sh '''
+            docker build -t ${DOCKER_IMAGE}:$BUILD_NUMBER .
+            docker tag ${DOCKER_IMAGE}:$BUILD_NUMBER ${DOCKER_IMAGE}:latest
+          '''
+        }
+      }
+    }
+
+    stage('Push Docker image') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+          sh '''
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker push ${DOCKER_IMAGE}:$BUILD_NUMBER
+            docker push ${DOCKER_IMAGE}:latest
+            docker logout
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      cleanWs()
+    }
+  }
+}
