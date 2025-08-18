@@ -10,7 +10,7 @@ on:
 
 env:
   # CHANGE THIS to your actual Docker Hub repo (e.g., petermartian/messaging-app)
-  IMAGE_NAME: your-dockerhub-username/messaging-app
+  IMAGE_NAME: petermartian/messaging-app
 
 jobs:
   docker:
