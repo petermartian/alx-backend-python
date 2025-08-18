@@ -1,6 +1,7 @@
 import django_filters as filters
 from .models import Message, Conversation
 
+
 class MessageFilter(filters.FilterSet):
     """
     Supports:
@@ -20,6 +21,7 @@ class MessageFilter(filters.FilterSet):
     class Meta:
         model = Message
         fields = ["conversation", "sender", "created_at"]
+
 
 class ConversationFilter(filters.FilterSet):
     """

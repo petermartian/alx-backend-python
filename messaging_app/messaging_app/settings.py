@@ -49,7 +49,6 @@ INSTALLED_APPS = [
 # Removed duplicate and incomplete REST_FRAMEWORK definition
 
 
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -96,7 +95,6 @@ DATABASES = {
         } if os.getenv('DB_HOST') else {},
     }
 }
-
 
 
 # Password validation
@@ -156,7 +154,6 @@ REST_FRAMEWORK = {
         "django_filters.rest_framework.DjangoFilterBackend"
     ],
 }
-
 
 
 SIMPLE_JWT = {

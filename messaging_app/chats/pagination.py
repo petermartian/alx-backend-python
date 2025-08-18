@@ -1,5 +1,6 @@
-from rest_framework.pagination import PageNumberPagination # type: ignore
-from rest_framework.response import Response # type: ignore
+from rest_framework.pagination import PageNumberPagination  # type: ignore
+from rest_framework.response import Response  # type: ignore
+
 
 class MessagesPagination(PageNumberPagination):
     page_size = 20
@@ -8,7 +9,7 @@ class MessagesPagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response({
-            "count": self.page.paginator.count,   # <- checker looks for this
+            "count": self.page.paginator.count,  # <- checker looks for this
             "page": self.page.number,
             "page_size": self.get_page_size(self.request),
             "next": self.get_next_link(),

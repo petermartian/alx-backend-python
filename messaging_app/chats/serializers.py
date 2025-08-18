@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Conversation, Message
 
+
 class ConversationSerializer(serializers.ModelSerializer):
     participants = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     last_message = serializers.SerializerMethodField()
@@ -17,6 +18,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "content": m.content,
             "created_at": m.created_at,
         }
+
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.ReadOnlyField(source="sender.username")

@@ -14,6 +14,7 @@ from .pagination import MessagesPagination
 
 User = get_user_model()
 
+
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated, IsParticipantOfConversation]
@@ -49,6 +50,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         convo = self.get_object()
         convo.participants.add(user)
         return Response({"detail": f"Added user {user_id}"}, status=status.HTTP_200_OK)
+
 
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
