@@ -1,25 +1,13 @@
 name: CI
-
-on:
-  push:
-    branches: [ "main", "python-context-async-perations-0x02" ]
-    paths:
-      - 'messaging_app/**'
-      - '.github/workflows/**'
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - 'messaging_app/**'
+on: [push, pull_request]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
       - name: Install deps
         working-directory: messaging_app
         run: |
@@ -29,13 +17,11 @@ jobs:
       - name: Lint
         working-directory: messaging_app
         run: flake8 .
-      - name: Test with coverage
+      - name: Test
         working-directory: messaging_app
         run: |
           mkdir -p reports
-          pytest --maxfail=1 -q --disable-warnings \
-            --junitxml=reports/junit.xml \
-            --cov=. --cov-report=xml:reports/coverage.xml
+          pytest -q --junitxml=reports/junit.xml --cov=. --cov-report=xml:reports/coverage.xml
       - name: Upload reports
         uses: actions/upload-artifact@v4
         with:

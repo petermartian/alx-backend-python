@@ -1,41 +1,29 @@
 name: Docker Build & Push
-
 on:
   push:
-    branches: [ "main", "python-context-async-perations-0x02" ]
-    paths:
-      - 'messaging_app/**'
-      - '.github/workflows/**'
+    branches: [ "main" ]
   workflow_dispatch:
 
 env:
-  # CHANGE THIS to your actual Docker Hub repo (e.g., petermartian/messaging-app)
-  IMAGE_NAME: petermartian/messaging-app
+  IMAGE_NAME: your-dockerhub-username/messaging-app
 
 jobs:
   docker:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
+      - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
             type=sha
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: ./messaging_app
           file: ./messaging_app/Dockerfile
