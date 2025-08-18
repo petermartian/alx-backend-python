@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "python-context-async-perations-0x02" ]
+    paths:
+      - 'messaging_app/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'messaging_app/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        working-directory: messaging_app
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-cov flake8 coverage
+      - name: Lint
+        working-directory: messaging_app
+        run: flake8 .
+      - name: Test with coverage
+        working-directory: messaging_app
+        run: |
+          mkdir -p reports
+          pytest --maxfail=1 -q --disable-warnings \
+            --junitxml=reports/junit.xml \
+            --cov=. --cov-report=xml:reports/coverage.xml
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: messaging_app/reports
