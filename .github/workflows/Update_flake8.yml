@@ -23,7 +23,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t petermartian/alx-backend-python:latest .
+          docker build -t petmartian/alx-backend-python:latest .
           docker push petermartian/alx-backend-python:latest
 
       - name: Run Flake8
