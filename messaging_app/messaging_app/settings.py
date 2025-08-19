@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,14 +39,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-   "rest_framework",
+    # 3rd Party Apps
+    "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
-    "django_filters",              # <-- add this
+    "django_filters",
+    # Local Apps
     "chats",
 ]
-
-# Removed duplicate and incomplete REST_FRAMEWORK definition
 
 
 MIDDLEWARE = [
@@ -82,17 +81,24 @@ WSGI_APPLICATION = 'messaging_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Determine DB name before the dictionary to avoid a long line
+if os.getenv('DB_HOST'):
+    DB_NAME = 'messaging_db'
+else:
+    DB_NAME = os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3')
+
+DB_ENGINE = 'django.db.backends.mysql' if os.getenv('DB_HOST') else 'django.db.backends.sqlite3'
+DB_OPTIONS = {'charset': 'utf8mb4'} if os.getenv('DB_HOST') else {}
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql' if os.getenv('DB_HOST') else 'django.db.backends.sqlite3',
-        'NAME': os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3' if not os.getenv('DB_HOST') else 'messaging_db'),
+        'ENGINE': DB_ENGINE,
+        'NAME': DB_NAME,
         'USER': os.getenv('DB_USER', ''),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', ''),
         'PORT': os.getenv('DB_PORT', ''),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        } if os.getenv('DB_HOST') else {},
+        'OPTIONS': DB_OPTIONS,
     }
 }
 
@@ -138,8 +144,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-from datetime import timedelta
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

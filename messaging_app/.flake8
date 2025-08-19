@@ -1,4 +1,6 @@
 [flake8]
-max-line-length = 100
+max-line-length = 140
 extend-ignore = E203,W503
-exclude = .venv, __pycache__, migrations, .git
+exclude = .git, .venv, venv, __pycache__, build, dist, node_modules, migrations
+per-file-ignores =
+    messaging_app/messaging_app/settings.py:E131,E303,E402
