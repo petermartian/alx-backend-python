@@ -87,17 +87,18 @@ if os.getenv('DB_HOST'):
 else:
     DB_NAME = os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3')
 
+DB_ENGINE = 'django.db.backends.mysql' if os.getenv('DB_HOST') else 'django.db.backends.sqlite3'
+DB_OPTIONS = {'charset': 'utf8mb4'} if os.getenv('DB_HOST') else {}
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql' if os.getenv('DB_HOST') else 'django.db.backends.sqlite3',
+        'ENGINE': DB_ENGINE,
         'NAME': DB_NAME,
         'USER': os.getenv('DB_USER', ''),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', ''),
         'PORT': os.getenv('DB_PORT', ''),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        } if os.getenv('DB_HOST') else {},
+        'OPTIONS': DB_OPTIONS,
     }
 }
 
