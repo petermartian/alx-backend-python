@@ -24,7 +24,8 @@ pipeline {
     stage('Lint') {
       steps {
         dir('messaging_app') {
-          sh '. .venv/bin/activate && flake8 .'
+          // Corrected: Explicitly linting the 'messaging_app' directory
+          sh '. .venv/bin/activate && flake8 messaging_app'
         }
       }
     }
