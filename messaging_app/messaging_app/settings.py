@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from datetime import timedelta  # <-- MOVED TO TOP
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,12 +81,16 @@ WSGI_APPLICATION = 'messaging_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Determine DB name before the dictionary to avoid a long line
+if os.getenv('DB_HOST'):
+    DB_NAME = 'messaging_db'
+else:
+    DB_NAME = os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql' if os.getenv('DB_HOST') else 'django.db.backends.sqlite3',
-        'NAME': os.getenv(
-            'DB_NAME', BASE_DIR / 'db.sqlite3'
-        ) if not os.getenv('DB_HOST') else 'messaging_db',
+        'NAME': DB_NAME,
         'USER': os.getenv('DB_USER', ''),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', ''),
